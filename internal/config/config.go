@@ -76,6 +76,16 @@ func Load() (*Config, error) {
     }
 
     configPath := filepath.Join(homeDir, ".config/monitord/config.json")
+
+    // Check if config file exists
+    if _, err := os.Stat(configPath); os.IsNotExist(err) {
+        // Create example config if file doesn't exist
+        if err := SaveExampleConfig(configPath); err != nil {
+            return nil, fmt.Errorf("failed to create example config: %w", err)
+        }
+        fmt.Printf("Created example config at: %s\n", configPath)
+    }
+
     return LoadFromFile(configPath)
 }
 
@@ -138,4 +148,37 @@ func (c *Config) SaveToFile(path string) error {
     }
 
     return os.WriteFile(path, data, 0644)
+}
+
+// SaveExampleConfig creates a default configuration file at the specified path
+func SaveExampleConfig(path string) error {
+    exampleConfig := &Config{
+        Database: DatabaseConfig{
+            Path: ".config/monitord/monitord.db",
+        },
+        Monitor: MonitorConfig{
+            ConfigCheck: Duration(180 * time.Second),
+            Endpoints: []Endpoint{
+                {
+                    Name:        "Cyber Epistemics",
+                    URL:         "https://cyberepistemics.com",
+                    Interval:    Duration(60 * time.Second),
+                    Timeout:     Duration(10 * time.Second),
+                    Description: "Cyber Epistemics Personal Website",
+                    Tags:        []string{"production", "external", "blog"},
+                    Enabled:     true,
+                },
+            },
+        },
+        Logging: LogConfig{
+            Path:  "/usr/local/var/log/monitord.log",
+            Level: "info",
+        },
+    }
+
+    if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+        return fmt.Errorf("failed to create config directory: %w", err)
+    }
+
+    return exampleConfig.SaveToFile(path)
 }
